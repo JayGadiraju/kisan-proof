@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KisanProof | Crop-Loss Claim Evidence Generator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .leaflet-container { z-index: 10; border-radius: 0.75rem; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen pb-16">
+
+  <!-- Top Navigation & Demo Switcher -->
+  <header class="bg-emerald-800 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🌾</span>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">KisanProof</h1>
+          <p class="text-xs text-emerald-200">PMFBY Crop-Loss Claim Evidence Generator</p>
+        </div>
+      </div>
+      <!-- Instant Demo Scenario Dropdown -->
+      <div class="flex items-center gap-2 bg-emerald-900/80 px-3 py-1.5 rounded-lg border border-emerald-700">
+        <label for="scenarioSelect" class="text-xs font-semibold text-emerald-200 uppercase tracking-wide">Demo Mode:</label>
+        <select id="scenarioSelect" class="bg-emerald-950 text-white text-sm font-medium rounded px-2 py-1 outline-none border border-emerald-600 cursor-pointer">
+          <option value="strong">🟢 Strong Claim (Flood ~85)</option>
+          <option value="weak">🟡 Weak Claim (Far ~35)</option>
+          <option value="suspicious">🔴 Suspicious Claim (No Drop ~40)</option>
+        </select>
+        <button onclick="loadScenario()" class="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold text-xs px-2.5 py-1 rounded transition">Load</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- 72-Hour PMFBY Legal Countdown Banner -->
+    <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">⏳</span>
+        <div>
+          <h3 class="font-bold text-sm text-amber-900">PMFBY Statutory Reporting Window</h3>
+          <p id="countdownText" class="text-xs text-amber-800 font-medium">54 Hours Remaining to intimate loss under official crop insurance guidelines</p>
+        </div>
+      </div>
+      <button onclick="alert('📲 Kisan Alert (SMS / WhatsApp):\n\nDear Farmer, your claim dossier for Survey AP-GNT-2024 has 54h remaining for PMFBY fast-track approval. Keep your certified PDF ready.')" class="bg-amber-200 hover:bg-amber-300 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-sm transition">
+        🔔 Test Alert
+      </button>
+    </div>
+
+    <!-- Screen 1: Farm Setup -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">1</span>
+        <h2 class="font-bold text-slate-800 text-base">Farm & Crop Setup</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Farmer Name</label>
+          <input type="text" id="farmerName" value="Ramesh Patel" class="w-full text-sm font-medium border border-slate-300 rounded-lg p-2.5 outline-none focus:border-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Cultivated Crop</label>
+          <select id="cropName" class="w-full text-sm font-medium border border-slate-300 rounded-lg p-2.5 outline-none focus:border-emerald-600">
+            <option value="Paddy (Rice)">Paddy (Rice)</option>
+            <option value="Cotton">Cotton</option>
+            <option value="Chilli">Chilli</option>
+            <option value="Soybean">Soybean</option>
+            <option value="Maize">Maize</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Peril / Cause of Loss</label>
+          <select id="perilType" class="w-full text-sm font-medium border border-slate-300 rounded-lg p-2.5 outline-none focus:border-emerald-600">
+            <option value="Flood">Flood / Inundation</option>
+            <option value="Drought">Severe Drought</option>
+            <option value="Lodging (Wind)">Lodging (Squall / Wind)</option>
+            <option value="Hailstorm">Hailstorm</option>
+            <option value="Pest Attack">Pest Infestation</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Sowing Date</label>
+          <input type="date" id="sowingDate" value="2026-06-20" class="w-full text-sm font-medium border border-slate-300 rounded-lg p-2.5 outline-none focus:border-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Loss Incident Date</label>
+          <input type="date" id="lossDate" value="2026-09-12" class="w-full text-sm font-medium border border-slate-300 rounded-lg p-2.5 outline-none focus:border-emerald-600">
+        </div>
+      </div>
+
+      <!-- Farm Map Picker -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs font-bold text-slate-600">Click on Map to Set Farm Location</label>
+          <span id="farmCoords" class="text-xs font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">16.2435° N, 80.6482° E</span>
+        </div>
+        <div id="farmMap" class="h-56 w-full border border-slate-300 shadow-inner"></div>
+      </div>
+    </section>
+
+    <!-- Screen 2: Damage Capture -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">2</span>
+        <h2 class="font-bold text-slate-800 text-base">In-App Damage Photo Evidence</h2>
+      </div>
+
+      <!-- Live Camera Trigger -->
+      <div class="flex flex-col sm:flex-row gap-3 items-center">
+        <label class="w-full sm:w-auto flex-1 cursor-pointer bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm py-3 px-5 rounded-xl shadow flex items-center justify-center gap-2 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          <span>📸 Take Live Photo (Browser Camera)</span>
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(event)">
+        </label>
+        <span class="text-xs text-slate-400 font-semibold uppercase">or</span>
+        <button onclick="useSimulatedPhoto()" class="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 px-4 rounded-xl border border-slate-300 transition">
+          🖼️ Use Demo Photo
+        </button>
+      </div>
+
+      <!-- Photo Telemetry Card -->
+      <div id="photoCard" class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center">
+        <img id="photoPreview" src="https://images.unsplash.com/photo-1547683905-f686c993aae5?w=600&auto=format&fit=crop&q=80" alt="Damage evidence" class="w-36 h-28 object-cover rounded-lg border border-slate-300 shadow-sm">
+        <div class="flex-1 w-full space-y-1.5 text-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="font-bold text-slate-700" id="photoFilename">guntur_field_flood_damage.jpg</span>
+            <!-- Geofence Badge -->
+            <span id="geofenceBadge" class="font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+              ✓ Within 500m (Offset: 24m)
+            </span>
+          </div>
+          <div class="text-slate-500 font-mono" id="photoGpsText">GPS: 16.2437° N, 80.6484° E | Timestamp: Live</div>
+          <div class="bg-white border border-slate-200 rounded p-2 text-slate-600 font-mono text-[11px] break-all">
+            <span class="font-bold text-slate-800">SHA-256 Hash: </span>
+            <span id="photoHashText">a8f27b9c10d3e5f76b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 4: Evidence Strength Score Gauge -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">3</span>
+          <h2 class="font-bold text-slate-800 text-base">Evidence Strength Score</h2>
+        </div>
+        <span id="verdictBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wide">
+          STRONG CLAIM (FAST-TRACK)
+        </span>
+      </div>
+
+      <!-- Big Gauge & Highlights -->
+      <div class="flex flex-col sm:flex-row items-center justify-around gap-6 bg-slate-50 rounded-xl p-5 border border-slate-200">
+        <div class="text-center">
+          <div class="relative flex items-center justify-center">
+            <div id="scoreCircle" class="w-32 h-32 rounded-full border-8 border-emerald-500 flex flex-col items-center justify-center bg-white shadow-inner">
+              <span id="totalScoreNum" class="text-4xl font-extrabold text-emerald-700">85</span>
+              <span class="text-[11px] font-bold text-slate-400">OUT OF 100</span>
+            </div>
+          </div>
+          <p id="scoreVerdictLabel" class="font-bold text-sm text-emerald-800 mt-2">Verified Fast-Track</p>
+        </div>
+
+        <!-- 5-Factor Mini Breakdown -->
+        <div class="flex-1 w-full space-y-2 text-xs">
+          <div id="factorLocation" class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-2xs">
+            <div>
+              <span class="font-bold text-slate-800">1. GPS Geofence (25 pts max)</span>
+              <p id="factorLocationNote" class="text-slate-500 text-[11px]">Photo taken 24m from farm (Inside 500m).</p>
+            </div>
+            <span id="factorLocationScore" class="font-bold text-emerald-700 text-sm">25/25</span>
+          </div>
+
+          <div id="factorNdvi" class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-2xs">
+            <div>
+              <span class="font-bold text-slate-800">2. Satellite NDVI Drop (25 pts max)</span>
+              <p id="factorNdviNote" class="text-slate-500 text-[11px]">Sentinel-2 confirms vegetation drop of Δ -0.54.</p>
+            </div>
+            <span id="factorNdviScore" class="font-bold text-emerald-700 text-sm">25/25</span>
+          </div>
+
+          <div id="factorWeather" class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-2xs">
+            <div>
+              <span class="font-bold text-slate-800">3. Weather Anomaly (20 pts max)</span>
+              <p id="factorWeatherNote" class="text-slate-500 text-[11px]">Extreme 184mm rainfall corroborated.</p>
+            </div>
+            <span id="factorWeatherScore" class="font-bold text-emerald-700 text-sm">20/20</span>
+          </div>
+
+          <div id="factorAi" class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-2xs">
+            <div>
+              <span class="font-bold text-slate-800">4. AI Vision Assessment (20 pts max)</span>
+              <p id="factorAiNote" class="text-slate-500 text-[11px]">Flood damage confirmed: 85% severity.</p>
+            </div>
+            <span id="factorAiScore" class="font-bold text-emerald-700 text-sm">20/20</span>
+          </div>
+
+          <div id="factorDelay" class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-2xs">
+            <div>
+              <span class="font-bold text-slate-800">5. 72h Window Compliance (10 pts max)</span>
+              <p id="factorDelayNote" class="text-slate-500 text-[11px]">Reported within 18h (Prompt).</p>
+            </div>
+            <span id="factorDelayScore" class="font-bold text-emerald-700 text-sm">10/10</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 3: Verification Results (Satellite & Weather Charts + AI Card) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">4</span>
+        <h2 class="font-bold text-slate-800 text-base">Multi-Sensor Cross-Checks</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Satellite NDVI Chart -->
+        <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-xs text-slate-700">🛰️ Sentinel-2 NDVI Trend</span>
+            <span id="ndviDropBadge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Δ -0.54 Drop</span>
+          </div>
+          <div class="h-44">
+            <canvas id="ndviChartCanvas"></canvas>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1.5 text-center">Multi-spectral 10m ground resolution | Bands 8 (NIR) & 4 (Red)</p>
+        </div>
+
+        <!-- Weather Rainfall Chart -->
+        <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-xs text-slate-700">🌧️ 7-Day Rainfall Verification</span>
+            <span id="weatherPeakBadge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">184.2 mm Peak</span>
+          </div>
+          <div class="h-44">
+            <canvas id="weatherChartCanvas"></canvas>
+          </div>
+          <p id="weatherAnomalyDesc" class="text-[10px] text-slate-600 mt-1.5 text-center font-medium">Extreme 184.2 mm downpour on loss date</p>
+        </div>
+      </div>
+
+      <!-- AI Vision Result Card -->
+      <div class="bg-emerald-50/50 rounded-xl p-4 border border-emerald-200 flex flex-col sm:flex-row items-center gap-4">
+        <div class="p-3 bg-emerald-100 text-emerald-800 rounded-xl text-2xl font-bold">🤖</div>
+        <div class="flex-1 w-full space-y-1 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-emerald-950 text-sm" id="aiDamageType">Flood Damage (Confirmed)</span>
+            <span class="font-bold text-emerald-700 text-xs" id="aiConfidenceBadge">94% Confidence</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2">
+            <div id="aiSeverityBar" class="bg-emerald-600 h-2 rounded-full" style="width: 85%"></div>
+          </div>
+          <p id="aiNotes" class="text-slate-600 text-[11px]">Severe waterlogging, complete canopy submergence, and root rot signatures detected.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5: Download PDF Report Button -->
+    <section class="text-center pt-2">
+      <button onclick="downloadPdfReport()" class="w-full sm:w-auto min-w-[320px] bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-extrabold text-base py-4 px-8 rounded-2xl shadow-lg transition flex items-center justify-center gap-3 mx-auto">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        <span>Download Official PMFBY Claim Report (PDF)</span>
+      </button>
+      <p class="text-xs text-slate-500 mt-2">Includes farmer ID, SHA-256 tamper hash, satellite NDVI curve, and weather logs.</p>
+    </section>
+
+  </main>
+
+  <!-- Interactive Logic -->
+  <script>
+    let map, farmMarker, photoMarker;
+    let ndviChart, weatherChart;
+    let currentScenario = 'strong';
+    let currentClaimData = {};
+
+    let farmLat = 16.2435, farmLng = 80.6482;
+    let photoLat = 16.2437, photoLng = 80.6484;
+
+    // Initialize Map and Charts on load
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initCharts();
+      loadScenario();
+    });
+
+    function initMap() {
+      map = L.map('farmMap').setView([farmLat, farmLng], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      farmMarker = L.marker([farmLat, farmLng], { draggable: true }).addTo(map)
+        .bindPopup("<b>Registered Farm Location</b><br/>Drag to move").openPopup();
+
+      farmMarker.on('dragend', function(e) {
+        const coord = e.target.getLatLng();
+        farmLat = coord.lat;
+        farmLng = coord.lng;
+        document.getElementById('farmCoords').innerText = `${farmLat.toFixed(4)}° N, ${farmLng.toFixed(4)}° E`;
+        triggerVerification();
+      });
+
+      map.on('click', function(e) {
+        farmLat = e.latlng.lat;
+        farmLng = e.latlng.lng;
+        farmMarker.setLatLng([farmLat, farmLng]);
+        document.getElementById('farmCoords').innerText = `${farmLat.toFixed(4)}° N, ${farmLng.toFixed(4)}° E`;
+        triggerVerification();
+      });
+    }
+
+    function initCharts() {
+      // NDVI Chart
+      const ctxNdvi = document.getElementById('ndviChartCanvas').getContext('2d');
+      ndviChart = new Chart(ctxNdvi, {
+        type: 'line',
+        data: {
+          labels: ['Aug 29', 'Sep 02', 'Sep 06', 'Sep 10', 'Sep 12 (Loss)', 'Sep 14', 'Sep 17'],
+          datasets: [{
+            label: 'Sentinel-2 NDVI',
+            data: [0.74, 0.76, 0.78, 0.77, 0.45, 0.30, 0.23],
+            borderColor: '#15803d',
+            backgroundColor: 'rgba(21, 128, 61, 0.1)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointBackgroundColor: '#15803d'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { min: 0, max: 1.0, title: { display: true, text: 'NDVI Index' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // Weather Chart
+      const ctxWeather = document.getElementById('weatherChartCanvas').getContext('2d');
+      weatherChart = new Chart(ctxWeather, {
+        type: 'bar',
+        data: {
+          labels: ['Sep 09', 'Sep 10', 'Sep 11', 'Sep 12 (Loss)', 'Sep 13', 'Sep 14', 'Sep 15'],
+          datasets: [{
+            label: 'Rainfall (mm)',
+            data: [8.0, 14.5, 62.0, 184.2, 48.0, 6.5, 2.0],
+            backgroundColor: ['#93c5fd', '#93c5fd', '#60a5fa', '#dc2626', '#60a5fa', '#93c5fd', '#93c5fd'],
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Precipitation (mm)' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // Load one of the 3 Pre-set Demo Scenarios
+    async function loadScenario() {
+      const type = document.getElementById('scenarioSelect').value;
+      currentScenario = type;
+
+      const res = await fetch('/api/scenarios');
+      const scenarios = await res.json();
+      const sc = scenarios[type];
+
+      document.getElementById('farmerName').value = sc.farmer_name;
+      document.getElementById('cropName').value = sc.crop;
+      document.getElementById('perilType').value = sc.peril;
+      document.getElementById('sowingDate').value = sc.sowing_date;
+      document.getElementById('lossDate').value = sc.loss_date;
+
+      farmLat = sc.farm_lat;
+      farmLng = sc.farm_lng;
+      photoLat = sc.photo_lat;
+      photoLng = sc.photo_lng;
+
+      farmMarker.setLatLng([farmLat, farmLng]);
+      map.setView([farmLat, farmLng], 13);
+      document.getElementById('farmCoords').innerText = `${farmLat.toFixed(4)}° N, ${farmLng.toFixed(4)}° E`;
+      document.getElementById('photoFilename').innerText = sc.photo_name;
+
+      if (type === 'strong') {
+        document.getElementById('photoPreview').src = "https://images.unsplash.com/photo-1547683905-f686c993aae5?w=600&auto=format&fit=crop&q=80";
+        document.getElementById('countdownText').innerText = "54 Hours Remaining to intimate loss under official PMFBY guidelines";
+      } else if (type === 'weak') {
+        document.getElementById('photoPreview').src = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop&q=80";
+        document.getElementById('countdownText').innerText = "⚠️ 72-Hour Legal PMFBY reporting window expired 6 days ago!";
+      } else {
+        document.getElementById('photoPreview').src = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop&q=80";
+        document.getElementById('countdownText').innerText = "36 Hours Remaining to intimate loss under official PMFBY guidelines";
+      }
+
+      triggerVerification();
+    }
+
+    // Trigger Verification Pipeline (Scoring + Charts)
+    async function triggerVerification() {
+      const payload = {
+        scenario: currentScenario,
+        farmer_name: document.getElementById('farmerName').value,
+        crop: document.getElementById('cropName').value,
+        peril: document.getElementById('perilType').value,
+        loss_date: document.getElementById('lossDate').value,
+        farm_lat: farmLat,
+        farm_lng: farmLng,
+        photo_lat: photoLat,
+        photo_lng: photoLng,
+        delay_hours: currentScenario === 'weak' ? 140 : (currentScenario === 'strong' ? 18 : 36)
+      };
+
+      const res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      currentClaimData = { ...payload, ...data, total_score: data.score.total_score, verdict: data.score.verdict, factors: data.score.factors };
+
+      // Update Geofence UI
+      const dist = data.distance_m;
+      const isWithin = data.is_within_geofence;
+      const gBadge = document.getElementById('geofenceBadge');
+      if (isWithin) {
+        gBadge.className = "font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
+        gBadge.innerText = `✓ Within 500m (Offset: ${dist}m)`;
+      } else {
+        gBadge.className = "font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800";
+        gBadge.innerText = `⚠️ Violation: ${dist > 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m'} from farm`;
+      }
+      document.getElementById('photoGpsText').innerText = `GPS: ${photoLat.toFixed(4)}° N, ${photoLng.toFixed(4)}° E | Timestamp: ${new Date().toLocaleTimeString()}`;
+      document.getElementById('photoHashText').innerText = data.photo_hash;
+
+      // Update Score Gauge
+      const score = data.score.total_score;
+      document.getElementById('totalScoreNum').innerText = score;
+      const verdictBadge = document.getElementById('verdictBadge');
+      const scoreCircle = document.getElementById('scoreCircle');
+
+      if (data.score.verdict_color === 'emerald') {
+        verdictBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wide";
+        scoreCircle.className = "w-32 h-32 rounded-full border-8 border-emerald-500 flex flex-col items-center justify-center bg-white shadow-inner";
+        document.getElementById('scoreVerdictLabel').className = "font-bold text-sm text-emerald-800 mt-2";
+      } else if (data.score.verdict_color === 'amber') {
+        verdictBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800 uppercase tracking-wide";
+        scoreCircle.className = "w-32 h-32 rounded-full border-8 border-amber-500 flex flex-col items-center justify-center bg-white shadow-inner";
+        document.getElementById('scoreVerdictLabel').className = "font-bold text-sm text-amber-800 mt-2";
+      } else {
+        verdictBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-rose-100 text-rose-800 uppercase tracking-wide";
+        scoreCircle.className = "w-32 h-32 rounded-full border-8 border-rose-500 flex flex-col items-center justify-center bg-white shadow-inner";
+        document.getElementById('scoreVerdictLabel').className = "font-bold text-sm text-rose-800 mt-2";
+      }
+      verdictBadge.innerText = data.score.verdict;
+      document.getElementById('scoreVerdictLabel').innerText = data.score.verdict;
+
+      // Update 5 Factors
+      const f = data.score.factors;
+      document.getElementById('factorLocationScore').innerText = `${f.location.score}/${f.location.max}`;
+      document.getElementById('factorLocationNote').innerText = f.location.note;
+
+      document.getElementById('factorNdviScore').innerText = `${f.ndvi.score}/${f.ndvi.max}`;
+      document.getElementById('factorNdviNote').innerText = f.ndvi.note;
+
+      document.getElementById('factorWeatherScore').innerText = `${f.weather.score}/${f.weather.max}`;
+      document.getElementById('factorWeatherNote').innerText = f.weather.note;
+
+      document.getElementById('factorAiScore').innerText = `${f.ai.score}/${f.ai.max}`;
+      document.getElementById('factorAiNote').innerText = f.ai.note;
+
+      document.getElementById('factorDelayScore').innerText = `${f.delay.score}/${f.delay.max}`;
+      document.getElementById('factorDelayNote').innerText = f.delay.note;
+
+      // Update Charts
+      ndviChart.data.labels = data.ndvi.labels;
+      ndviChart.data.datasets[0].data = data.ndvi.values;
+      ndviChart.update();
+
+      document.getElementById('ndviDropBadge').innerText = `Δ ${data.ndvi.drop > 0 ? '-'+data.ndvi.drop : '+'+Math.abs(data.ndvi.drop)} Drop`;
+
+      weatherChart.data.labels = data.weather.labels;
+      weatherChart.data.datasets[0].data = data.weather.rainfall;
+      weatherChart.update();
+
+      document.getElementById('weatherAnomalyDesc').innerText = data.weather.anomaly_text;
+      const peak = Math.max(...data.weather.rainfall);
+      document.getElementById('weatherPeakBadge').innerText = `${peak.toFixed(1)} mm Peak`;
+
+      // Update AI Card
+      document.getElementById('aiDamageType').innerText = data.ai_vision.damage_type;
+      document.getElementById('aiConfidenceBadge').innerText = `${data.ai_vision.confidence_pct}% Confidence`;
+      document.getElementById('aiSeverityBar').style.width = `${data.ai_vision.severity_pct}%`;
+      document.getElementById('aiNotes').innerText = data.ai_vision.notes;
+    }
+
+    // In-browser photo upload & client-side SHA-256 calculation
+    async function handlePhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('photoFilename').innerText = file.name;
+      const reader = new FileReader();
+      reader.onload = async function(evt) {
+        document.getElementById('photoPreview').src = evt.target.result;
+        
+        // Compute SHA-256 hash using web crypto API
+        const arrayBuffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        document.getElementById('photoHashText').innerText = hashHex;
+
+        // Auto-read GPS if supported
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              photoLat = pos.coords.latitude;
+              photoLng = pos.coords.longitude;
+              triggerVerification();
+            },
+            (err) => {
+              // fallback to farm vicinity
+              photoLat = farmLat + 0.0002;
+              photoLng = farmLng + 0.0002;
+              triggerVerification();
+            }
+          );
+        } else {
+          triggerVerification();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function useSimulatedPhoto() {
+      photoLat = farmLat + 0.0002;
+      photoLng = farmLng + 0.0002;
+      triggerVerification();
+    }
+
+    // Download Claim Report PDF
+    async function downloadPdfReport() {
+      const btn = event.currentTarget;
+      const originalText = btn.innerHTML;
+      btn.innerText = "⏳ Generating Official PDF...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/download-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentClaimData)
+        });
+
+        if (!res.ok) throw new Error("PDF generation failed");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `KisanProof_PMFBY_Report_${currentClaimData.farmer_name.replace(' ', '_')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (err) {
+        alert("Error generating PDF: " + err.message);
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
